@@ -1,13 +1,22 @@
 import streamlit as st
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from transformers import pipeline
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 
-sentiment_analyzer = pipeline("sentiment-analysis")
+# Load the sentiment analysis model that includes a neutral category
+tokenizer = AutoTokenizer.from_pretrained("cardiffnlp/twitter-roberta-base-sentiment")
+model = AutoModelForSequenceClassification.from_pretrained("cardiffnlp/twitter-roberta-base-sentiment")
+sentiment_analyzer = pipeline("sentiment-analysis", model=model, tokenizer=tokenizer)
 
-def analyze_sentiment(text, language):
+def analyze_sentiment(text):
     result = sentiment_analyzer(text)[0]
-    sentiment = result['label'].lower()
+    label_mapping = {
+        'LABEL_0': 'negative',
+        'LABEL_1': 'neutral',
+        'LABEL_2': 'positive'
+    }
+    sentiment = label_mapping[result['label'].upper()]
     if sentiment == 'neutral':
         sentiment = 'null'
     return sentiment
@@ -42,7 +51,7 @@ with st.form("my_form"):
 
         prompt = PromptTemplate(template=template, input_variables=["text_review", "option"])
 
-        sentiment = analyze_sentiment(text_review, option)
+        sentiment = analyze_sentiment(text_review)
 
         response = {
             "text_review": text_review,
@@ -52,3 +61,4 @@ with st.form("my_form"):
 
         st.json(response)
         print(response)
+
